@@ -5,6 +5,8 @@
 #install.packages("stringr")
 #install.packages("foreach")
 #install.packages("gsubfn")
+#install.packages("ggplot2")
+#install.packages("rworldmap")
 
 ##Shodan package expects SHODAN_API_KEY to be defined
 #devtools::install_github("hrbrmstr/shodan")
@@ -16,9 +18,12 @@ library(stringr)
 library(tidyr)
 library(foreach)
 library(gsubfn)
+library(ggplot2)
+library(rworldmap)
 
 ##Download sysdata file that contains CVEs and CPEs information
-download.file(url = "https://github.com/r-net-tools/security.datasets/raw/master/net.security/sysdata.rda", destfile = "sysdata.rda")
+download.file(url = "https://github.com/r-net-tools/security.datasets/raw/master/net.security/sysdata.rda", 
+              destfile = "sysdata.rda")
 
 ##Load sysdata file
 load("sysdata.rda")
@@ -28,9 +33,16 @@ cpes <- netsec.data$datasets$cpes
 cves <- netsec.data$datasets$cves
 
 ##Create vector with camera vendors that will be checked to create the research
-cve_search_list <- c("axis.*?camera", "d-link.*?camera", "tp-link.*?sc", "canon.*?camera", "vivotek.*?camera", "sony.*?camera")
-shodan_search_list <- c("axis camera", "d-link dcs", "tp-link ip-camera", "canon network camera", "vivotek camera", "sony camera")
-regex_camera_search <- list(axis = "((AXIS|Axis).*Camera.(\\w)+(.(\\d)+)+)", dlink = "(DCS-(\\d)+\\w)", tplink = "TP-Link IP-Camera", canon = "Canon Network Camera", vivotek = "Vivotek Network Camera", sony = "((SONY|Sony).Network Camera.(\\w)+-(\\w)+)")
+cve_search_list <- c("axis.*?camera", "d-link.*?camera", "tp-link.*?sc", "canon.
+                     *?camera", "vivotek.*?camera", "sony.*?camera")
+
+shodan_search_list <- c("axis camera", "d-link dcs", "tp-link ip-camera", 
+                        "canon network camera", "vivotek camera", "sony camera")
+
+regex_camera_search <- list(axis = "((AXIS|Axis).*Camera.(\\w)+(.(\\d)+)+)", 
+                            dlink = "(DCS-(\\d)+\\w)", tplink = "TP-Link IP-Camera", 
+                            canon = "Canon Network Camera", vivotek = "Vivotek Network Camera", 
+                            sony = "((SONY|Sony).Network Camera.(\\w)+-(\\w)+)")
 
 cpe_fields <- c("cpe", "type", "vendor", "model", "version")
 cve_selected_fields <- c("cve", "cvss", "description", "cpe.software")
@@ -40,7 +52,13 @@ special_chars_to_remove <- c("_", "%")
 cameras <- data.frame(cves %>% filter(str_detect(cpe.software, paste(cve_search_list, collapse = "|"))) %>% select(cve_selected_fields))
 
 ##Define a new empty data frame
-cve_cameras_data <- data.frame(cve = character(), cvss = double(), description = character(), type = character(), vendor = character(), model = character(), version = double())
+cve_cameras_data <- data.frame(cve = character(), 
+                               cvss = double(), 
+                               description = character(), 
+                               type = character(), 
+                               vendor = character(), 
+                               model = character(), 
+                               version = double())
 
 ##Get the CPE software information and create a new dataframe with the information that is related to cameras
 for (row in 1:nrow(cameras)) {
@@ -83,7 +101,7 @@ parse_sony_camera <- function(software_info){
         info <- info[[1]]
         software_info[i,]$vendor <- "sony"
         software_info[i,]$model <- tolower(paste(info[2:(length(info)-1)], collapse = " "))
-        software_info[i,]$version <- info[length(info)]
+        software_info[i,]$version <- tolower(info[length(info)])
       }
     }
   }
@@ -127,17 +145,44 @@ shodan_search_function <- function(shodan_query) {
   result_to_return <- NULL
   result <- shodan_search(query = shodan_query)
   
-  # if (result$total > 100) {
-  #   result_to_return = rbind(result_to_return, data.frame(countruy_code = result$matches$location$country_code, country_name = result$matches$location$country_name, latitude = result$matches$location$latitude, longitude = result$matches$location$longitude, ip_str = result$matches$ip_str, data = result$matches$data, stringsAsFactors = FALSE))
-  #   
-  #   for (i in 2:round(result$total/100)) {
-  #     result <- shodan_search(query = shodan_query, page = i)
-  #     result_to_return = rbind(result_to_return, data.frame(countruy_code = result$matches$location$country_code, country_name = result$matches$location$country_name, latitude = result$matches$location$latitude, longitude = result$matches$location$longitude, ip_str = result$matches$ip_str, data = result$matches$data, vendor = "", model = "", version = "", stringsAsFactors = FALSE))
-  #     print(i)
-  #   }
-  # } else {
-    result_to_return <- data.frame(country_code = result$matches$location$country_code, country_name = result$matches$location$country_name, latitude = result$matches$location$latitude, longitude = result$matches$location$longitude, ip_str = result$matches$ip_str, data = result$matches$data, vendor = "", model = "", version = "", stringsAsFactors = FALSE)
-  #}
+  if (result$total > 100) {
+    result_to_return = rbind(result_to_return, data.frame(country_code = result$matches$location$country_code, 
+                                                          country_name = result$matches$location$country_name, 
+                                                          latitude = result$matches$location$latitude, 
+                                                          longitude = result$matches$location$longitude, 
+                                                          ip_str = result$matches$ip_str, 
+                                                          data = result$matches$data, 
+                                                          vendor = NA, 
+                                                          model = NA, 
+                                                          version = 0, 
+                                                          stringsAsFactors = FALSE))
+
+    for (i in 2:round(result$total/100)) {
+      result <- shodan_search(query = shodan_query, page = i)
+      
+      result_to_return = rbind(result_to_return, data.frame(country_code = result$matches$location$country_code, 
+                                                            country_name = result$matches$location$country_name, 
+                                                            latitude = result$matches$location$latitude, 
+                                                            longitude = result$matches$location$longitude, 
+                                                            ip_str = result$matches$ip_str, 
+                                                            data = result$matches$data, 
+                                                            vendor = NA, 
+                                                            model = NA, 
+                                                            version = 0, 
+                                                            stringsAsFactors = FALSE))
+    }
+  } else {
+    result_to_return <- data.frame(country_code = result$matches$location$country_code, 
+                                   country_name = result$matches$location$country_name, 
+                                   latitude = result$matches$location$latitude, 
+                                   longitude = result$matches$location$longitude, 
+                                   ip_str = result$matches$ip_str, 
+                                   data = result$matches$data, 
+                                   vendor = NA, 
+                                   model = NA, 
+                                   version = 0, 
+                                   stringsAsFactors = FALSE)
+  }
   
   get_camera_software(result_to_return, shodan_query)
 }
@@ -148,4 +193,36 @@ for (i in 1:length(shodan_search_list)) {
   shodan_cameras_data = rbind(shodan_cameras_data, shodan_search_function(shodan_search_list[i]))
 }
 
-test2 <- left_join(shodan_cameras_data, cve_cameras_data)
+##Drop rows that have NA values
+shodan_cameras_data <- shodan_cameras_data %>% drop_na()
+
+##Join shodan search result with cameras CVEs information
+shodan_cves_join <- left_join(shodan_cameras_data, cve_cameras_data)
+shodan_cves_join.no_na <- shodan_cves_join %>% drop_na()
+shodan_cves_join.no_na <- transform(shodan_cves_join.no_na, model = factor(model))
+shodan_cves_join.no_na <- transform(shodan_cves_join.no_na, vendor = factor(vendor))
+shodan_cves_join.no_na <- transform(shodan_cves_join.no_na, country_name = factor(country_name))
+
+##Show vulnerables cameras worldwide
+barplot(table(shodan_cves_join.no_na$vendor), col = "wheat", main = "Cámaras vulnerables a nivel mundial")
+barplot(table(shodan_cves_join.no_na$model), col = "wheat", main = "Cámaras AXIS vulnerables a nivel mundial por modelo")
+barplot(table(shodan_cves_join.no_na$country_name), col = "wheat", main = "Cámaras AXIS vulnerables a nivel mundial por país")
+barplot(table(complete.cases(shodan_cves_join)), col = "wheat", main = "Cámaras vulnerables vs no vulnerables")
+
+##Transform needed fields into factors
+shodan_cameras_data <- transform(shodan_cameras_data, model = factor(model))
+shodan_cameras_data <- transform(shodan_cameras_data, vendor = factor(vendor))
+shodan_cameras_data <- transform(shodan_cameras_data, country_name = factor(country_name))
+shodan_cameras_data <- transform(shodan_cameras_data, country_code = factor(country_code))
+
+##Factors
+cve_cameras_data <- transform(cve_cameras_data, vendor = factor(vendor))
+cve_cameras_data <- transform(cve_cameras_data, model = factor(model))
+cve_cameras_data <- transform(cve_cameras_data, country_name = factor(country_name))
+
+sh2 <- shodan_cameras_data[complete.cases(shodan_cameras_data),]
+barplot(table(cve_cameras_data$vendor), col = "wheat", main = "Vulnerabilidades por fabricante")
+barplot(table(shodan_cameras_data$country_name), col = "wheat", main = "Cámaras a nivel mundial")
+
+barplot(table(droplevels((subset(cve_cameras_data, vendor == "d-link"))$model)), 
+        col = "wheat", main = "Vulnerabilidades d-link")
