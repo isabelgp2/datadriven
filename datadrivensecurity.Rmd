@@ -5,21 +5,165 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(cache = TRUE)
 ```
 
-```{r installpackages, cache=TRUE}
-packages <- c("devtools", "tidyr", "deplyr", "stringr", "foreach", "gsubfn", "ggplot2")
+```{r installPackages, include=FALSE}
+packages <- c("devtools", "tidyr", "dplyr", "stringr", "foreach", "gsubfn", "ggplot2")
 
 cran.repos <- "http://cran.us.r-project.org"
 
 lapply(packages, function(x) {
   if (!require(x))
     install.packages(x, repos = cran.repos)
+  library(x, character.only = TRUE)
 })
 devtools::install_github("hrbrmstr/shodan")
 library(shodan)
 ```
 
+```{r, loadCVEFile, include=FALSE}
+## Download sysdata file that contains CVEs and CPEs information
+download.file(url = "https://github.com/r-net-tools/security.datasets/raw/master/net.security/sysdata.rda", 
+              destfile = "sysdata.rda")
+
+## Load sysdata file
+load("sysdata.rda")
+
+## Create new lists with CVEs information
+
+cves <- netsec.data$datasets$cves
+## Create a searching list that will be used to retrieve the CVEs related to cameras vulnerabilities
+cve_search_list <- c("axis.*?camera", "d-link.*?camera", "tp-link.*?sc", "canon.
+                     *?camera", "vivotek.*?camera", "sony.*?camera")
+
+## Create a list with the fields that will be extracted from the cves data frame
+cve_selected_fields <- c("cve", "cvss", "description", "cpe.software")
+
+## Create a list with the fields in which the cpe information will be divided 
+cpe_fields <- c("cpe", "type", "vendor", "model", "version")
+
+## List with special characters that need to be removed while cleaning the data
+special_chars_to_remove <- c("_", "%")
+
+## Get list of CVEs related to camera vulnerabilities
+cameras <- data.frame(cves %>% filter(str_detect(cpe.software, paste(cve_search_list, collapse = "|"))) %>% select(cve_selected_fields))
+
+## Define a new empty data frame in which the parsed data will be stored
+cve_cameras_data <- data.frame(cve = character(), 
+                               cvss = double(), 
+                               description = character(), 
+                               type = character(), 
+                               vendor = character(), 
+                               model = character(), 
+                               version = double())
+
+##Get the CPE software information and create a new dataframe with the information that is related to cameras
+for (row in 1:nrow(cameras)) {
+  camera <- cameras[row,]
+  
+  ##Parse cpe.software to JSON and filter its information in order to extract only camera related information
+  ##Once filtered, separate fields in cpe fields: cpe, type, vendor, model and version
+  software_list <- data.frame(software = jsonlite::fromJSON(camera$cpe.software), stringsAsFactors = FALSE) %>% filter(str_detect(software, paste(cve_search_list, collapse = "|"))) %>% separate(software, cpe_fields, sep = ":") %>% drop_na() %>% filter(type == "/h")
+  
+  if (nrow(software_list)[1] > 0) {
+    ##Remove special chars
+    software_list$model <- gsub(paste(special_chars_to_remove, collapse = "|"), ' ', software_list$model)
+    
+    cve_cameras_data = rbind(cve_cameras_data, data.frame(camera[1:3], software_list[2:5])) 
+  }
+}
+```
+
+```{r, getShodanInformation, include=FALSE}
+## Setup a list with searching values
+shodan_search_list <- c("axis camera", "d-link dcs", "tp-link ip-camera", 
+                        "canon network camera", "vivotek camera", "sony camera")
+
+## List with regex expressions needed to get the cameras information from Shodan results
+regex_camera_search <- list(axis = "((AXIS|Axis).*Camera.(\\w)+(.(\\d)+)+)", 
+                            dlink = "(DCS-(\\d)+\\w)", tplink = "TP-Link IP-Camera", 
+                            canon = "Canon Network Camera", vivotek = "Vivotek Network Camera", 
+                            sony = "((SONY|Sony).Network Camera.(\\w)+-(\\w)+)")
+
+## Function that parses AXIS cameras informtion
+## It returns the input dataset with vendor, model and version values                          
+parse_axis_camera <- function(software_info){
+  for (i in 1:nrow(software_info)) {
+    ## Apply regex
+    rgx <- strapply(software_info[i,]$data, regex_camera_search["axis"])
+    if (length(rgx) > 0 && !is.null(rgx[[1]])) {
+      info <- strsplit(unlist(rgx), " ")
+      if (length(info) > 0) {
+        ## Set vendor, model and version information
+        info <- info[[1]]
+        software_info[i,]$vendor <- "axis"
+        software_info[i,]$model <- tolower(paste(info[2:(length(info)-1)], collapse = " "))
+        software_info[i,]$version <- info[length(info)]
+      }
+    }
+  }
+  software_info
+}
+
+## Function that parses Sony cameras informtion
+## It returns the input dataset with vendor, model and version values
+parse_sony_camera <- function(software_info){
+  for (i in 1:nrow(software_info)) {
+    ## Apply regex
+    rgx <- strapply(software_info[i,]$data, regex_camera_search["sony"])
+    if (length(rgx) > 0 && !is.null(rgx[[1]])) {
+      info <- strsplit(unlist(rgx), " ")
+      if (length(info) > 0) {
+        ## Set vendor, model and version information
+        info <- info[[1]]
+        software_info[i,]$vendor <- "sony"
+        software_info[i,]$model <- tolower(paste(info[2:(length(info)-1)], collapse = " "))
+        software_info[i,]$version <- tolower(info[length(info)])
+      }
+    }
+  }
+  software_info
+}
+
+## Function that parses D-Link cameras informtion
+## It returns the input dataset with vendor, model and version values
+parse_dlink_camera <- function(software_info){
+  for (i in 1:nrow(software_info)) {
+    rgx <- strapply(software_info[i,]$data, regex_camera_search["dlink"])
+    if (length(rgx) > 0 && !is.null(rgx[[1]])) {
+        ## Set vendor and model information
+        info <- rgx[[1]]
+        software_info[i,]$vendor <- "d-link"
+        software_info[i,]$model <- tolower(info[1])
+    }
+  }
+  software_info
+}
+
+## Get software information depending on the camera vendor
+get_camera_software <- function(software_info, shodan_query){
+  if (shodan_query == shodan_search_list[1]) {
+    software_info <- parse_axis_camera(software_info)
+  } else if (shodan_query == shodan_search_list[2]) {
+    software_info <- parse_dlink_camera(software_info)
+  } else if (shodan_query == shodan_search_list[3]) {
+    software_info$vendor <- "tp-link"
+    software_info$model <- "ip-camera"
+  } else if (shodan_query == shodan_search_list[4]) {
+    software_info$vendor <- "canon"
+    software_info$model <- "network camera"
+  } else if (shodan_query == shodan_search_list[5]) {
+    software_info$vendor <- "vivotek"
+    software_info$model <- "network camera"
+  } else if (shodan_query == shodan_search_list[6]) {
+    software_info <- parse_sony_camera(software_info)
+  }
+  
+  software_info
+}
+
+```
 ### Introducción
 La pregunta que ha dado origen a este estudio es saber cuántas cámaras IP (como categoría de cámara digital) están abiertas y pueden ser hackeables, es decir vulnerables, en todo el mundo. En un principio la idea original era averiguar el número de cámaras que podrían ser objeto de vulnerabilidades, pero restringiéndonos a España. La búsqueda no fue muy productiva ya que no encontramos la cantidad suficiente para que el estudio fuera representativo. Por otro lado también hemos tenido limitaciones en cuanto a la búsqueda de los datos debido a que la versión gratuita de Shodan no nos permitía hacer más de “n” búsquedas.  
   
