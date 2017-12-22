@@ -9,12 +9,15 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ```{r installpackages, cache=TRUE}
 packages <- c("devtools", "tidyr", "deplyr", "stringr", "foreach", "gsubfn", "ggplot2")
-repos <- "http://cran.us.r-project.org"
+
+cran.repos <- "http://cran.us.r-project.org"
+
 lapply(packages, function(x) {
   if (!require(x))
-    install.packages(x, repos = repos)
-  library(x)
+    install.packages(x, repos = cran.repos)
 })
+devtools::install_github("hrbrmstr/shodan")
+library(shodan)
 ```
 
 ### Introducción
@@ -59,7 +62,7 @@ Llegados a este punto, decidimos cambiar la pregunta y determinar **qué fabrica
 1. En primer lugar un [dataset con la información de los CVEs]. Este fichero ya viene preparado para su utilización en R por lo tanto sólo se ha necesitado    parsear los datos para que estuviesen en el formato necesario para el estudio.  
 2. Como en los casos anteriores, la API de Shodan para recoger la información sobre las cámaras IP. Para facilitar su uso, se ha utilizado una [librería para R] que nos ha permitido obtener directamente un dataset con los resultados de las búsquedas.  
 
-[dataset con la información de los CVEs]: https://github.com/r-net-tools/security.datasets/raw/master/net.security/sysdata.rda.  
+[dataset con la información de los CVEs]:https://github.com/r-net-tools/security.datasets/tree/master/net.security  
 [librería para R]: https://github.com/hrbrmstr/shodan  
 
 Cómo se verá a continuación, a pesar de la gran variedad de fabricantes de cámaras IP, la información obtenida no ha sido la esperada inicialmente. El primer problema con el que nos hemos encontrado ha sido el de determinar la lista de cámaras de las que haríamos el estudio.  
