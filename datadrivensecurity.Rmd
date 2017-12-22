@@ -1,0 +1,83 @@
+---
+title: "Data Driven Security"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r installpackages, cache=TRUE}
+packages <- c("devtools", "tidyr", "deplyr", "stringr", "foreach", "gsubfn", "ggplot2")
+repos <- "http://cran.us.r-project.org"
+lapply(packages, function(x) {
+  if (!require(x))
+    install.packages(x, repos = repos)
+  library(x)
+})
+```
+
+### Introducción
+La pregunta que ha dado origen a este estudio es saber cuántas cámaras IP (como categoría de cámara digital) están abiertas y pueden ser hackeables, es decir vulnerables, en todo el mundo. En un principio la idea original era averiguar el número de cámaras que podrían ser objeto de vulnerabilidades, pero restringiéndonos a España. La búsqueda no fue muy productiva ya que no encontramos la cantidad suficiente para que el estudio fuera representativo. Por otro lado también hemos tenido limitaciones en cuanto a la búsqueda de los datos debido a que la versión gratuita de Shodan no nos permitía hacer más de “n” búsquedas.  
+  
+  
+  
+#### ¿Por qué cámaras IP? 
+Una cámara IP es una cámara que emite las imágenes directamente a la intranet o internet sin necesidad de un ordenador.  
+Una cámara de red incorpora su propio miniordenador, lo que le permite emitir vídeo por sí misma. Además de comprimir el vídeo y enviarlo, puede tener una gran variedad de funciones:  
+
+   - Envío de correos electrónicos con imágenes.  
+   - Activación mediante movimiento de la imagen.  
+   - Activación mediante movimiento de sólo una parte de la imagen.  
+   - Activación a través de otros sensores.  
+   - Control remoto para mover la cámara y apuntar a una zona.  
+   - Programación de una secuencia de movimientos en la propia cámara.  
+   - Posibilidad de guardar y emitir los momentos anteriores a un evento.  
+ 
+Las cámaras IP permiten ver en tiempo real qué está pasando en un lugar, aunque esté a miles de kilómetros de distancia. Son cámaras de vídeo de gran calidad que tienen incluido un ordenador a través del que se conectan directamente a Internet.  
+  
+  
+**Características de un cámara IP  **
+
+1. Grabador de datos  
+   Hoy en día muchos de los sistemas de videovigilancia o cámaras de seguridad también llevan sistemas de grabación de imágenes automáticos. Se puede acceder    desde cualquier dispositivo conectado a Internet.  
+   
+2. Visión en vivo  
+   Con las cámaras IP se puede ver qué está pasando en este preciso momento. El usuario se conecta a través de Internet a una dirección IP que tienen sus    cámaras, algunos modelos permiten interacción con la ayuda de audio incorporado, y las funciones de tomar fotografías y grabar en video lo que está pasando.  
+   
+3. Microordenador
+   Una cámara IP tiene incorporado un ordenador, pequeño y especializado en ejecutar aplicaciones de red.  
+   
+### Idea inicial  
+
+La pregunta inicial constaba en determinar qué cámaras de las que hay abiertas publicamente, no cumplían con la ley de protección de datos. Para ello, la idea era utilizar la información devuelta por la API de Shodan. Esta devuelve un listado en formato JSON de la información que recoge de cada cámara encontrada. La idea consistía en intentar determinar en cada una de los objetos devueltos, ciertas palabras clave que nos permitiesen determinar si se trataba de una cámara que pudiera mostrar contenido que infringiese la ley de protección de datos.  
+
+A lo largo de esta fase se han encontrado varios problemas que han supuesto un cambio en la pregunta inicial. En primer lugar, al disponer de una cuenta gratuita de Shodan, la utilización de su API para este tipo de usuarios es limitada, permitiendo sólo obtener las 100 primeras búsquedas y no dejando utilizar filtros que permiten afinar más las búsquedas. Por otro lado, en los resultados de las búsquedas, no se nos devolvía información sobre qué podrían estar enfocando las cámaras por lo tanto, la idea inicial de utilizar palabras clave para poder clasificarlas no se podría aplicar. Por otro lado, en un primer instante se pensó acotar el estudio a España pero dado que la información encontrada no representaba un gran volumen de datos, se decidió hacer un estudio a nivel mundial.  
+
+Llegados a este punto, decidimos cambiar la pregunta y determinar **qué fabricantes de cámaras son más vulnerables**. Para ello se han tenido que utilizar dos fuentes de datos diferentes:  
+
+1. En primer lugar un [dataset con la información de los CVEs]. Este fichero ya viene preparado para su utilización en R por lo tanto sólo se ha necesitado    parsear los datos para que estuviesen en el formato necesario para el estudio.  
+2. Como en los casos anteriores, la API de Shodan para recoger la información sobre las cámaras IP. Para facilitar su uso, se ha utilizado una [librería para R] que nos ha permitido obtener directamente un dataset con los resultados de las búsquedas.  
+
+[dataset con la información de los CVEs]: https://github.com/r-net-tools/security.datasets/raw/master/net.security/sysdata.rda.  
+[librería para R]: https://github.com/hrbrmstr/shodan  
+
+Cómo se verá a continuación, a pesar de la gran variedad de fabricantes de cámaras IP, la información obtenida no ha sido la esperada inicialmente. El primer problema con el que nos hemos encontrado ha sido el de determinar la lista de cámaras de las que haríamos el estudio.  
+
+En un primer instante se pensó en extraer toda la información relacionada con cámaras de los CPEs, posteriormente filtrar los CVEs que estuviesen relacionados con vulnerabilidades de cámaras encontradas en los CPEs y por último, con la ayuda de Shodan hacer las búsquedas que nos permitiesen determinar cuántas cámaras se veían afectadas por estos fallos de seguridad. El problema que tuvimos es que, buscando vulnerabilidades, observamos que había información sobre cámaras que no estaban presentes en el fichero de los CPEs, por lo tanto descartamos hacer la búsqueda a partir de los CPEs.  
+
+En la siguiente prueba, nos centramos en extraer los CVEs que definiesen una vulnerabilidad relacionada con cámaras IP y una vez obtenida dicha información, buscar cuántas cámaras, junto a sus modelos y versiones, se veian afectadas a nivel mundial por estas vulnerabilidades. Pero a causa de hacer búsquedas muy acotadas, los resultados obtenidos no fueron suficientes para poder sacar ningún tipo de conclusiones.  
+
+En la tercera y última prueba, intentamos hacer búsquedas más genéricas, por fabricantes de cámaras IP y posteriormente extraer información sobre modelos y versiones a partir de los resultados devueltos por Shodan. De esta manera, analizando los resultados que Shodan devuelve al hacer búsquedas por diferentes modelos de cámaras, se escogieron los siguientes fabricantes: **AXIS, D-Link, TP-Link, Canon, Vivotek y Sony**. El criterio de selección de cámaras se basó en analizar qué resultados de Shodan nos devolvían información extra sobre modelo y versión de cámaras. Esto último fue un problema ya que cada fabricante muestra los datos de sus cámaras de una manera distinta y no todos hacen pública esta información por lo tanto Shodan no la puede indexar.  
+
+Esta última prueba se realizó con la idea de poder obtener otras posibles cámaras vulnerables que con la anterior prueba no se había conseguido. Pero para ello, se tuvieron que seguir los siguientes pasos:  
+
+1. Hacer las búsquedas de cada uno de los fabricantes escogidos.  
+2. Extraer información relevante a partir de los resultados obtenidos, en concreto nos centramos en obtener el modelo y la versión de cada cámara. Como ya se ha mencionado, cada fabricante muestra lo datos de sus cámaras de una manera distinta, por lo tanto este paso resultó más complejo ya que se tuvo que implementar una función de extracción de información diferente para cada fabricante. Por otro lado, tres de los fabricantes buscados no devuelven información del modelo ni versión, acotando aún más el estudio.  
+
+Una vez obtenida la lista de cámaras junto a su información técnica, se volvió a cruzar con los datos de los CVEs. De esta manera se obtuvieron un total de {VALOR CÁMARAS VULNERABLES} que como en los casos anteriores no son suficentes para poder hacer un estudio real de la situación mundial de las cámaras IP vulnerables. Además como en los casos anteriores, el único fabricante del que se han podido encontrar cámaras vulnerables es AXIS. Esto no quiere decir que los demás fabricantes no lo sean sino que a causa de no disponer de suficientes datos, no se han podido encontrar otras vulnerabilidades.
+   
+  
+
+
+
