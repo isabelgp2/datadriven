@@ -273,7 +273,7 @@ Una cámara de red incorpora su propio miniordenador, lo que le permite emitir v
 Las cámaras IP permiten ver en tiempo real qué está pasando en un lugar, aunque esté a miles de kilómetros de distancia. Son cámaras de vídeo de gran calidad que tienen incluido un ordenador a través del que se conectan directamente a Internet.  
   
   
-**Características de un cámara IP  **
+**Características de un cámara IP**
 
 1. Grabador de datos  
    Hoy en día muchos de los sistemas de videovigilancia o cámaras de seguridad también llevan sistemas de grabación de imágenes automáticos. Se puede acceder    desde cualquier dispositivo conectado a Internet.  
@@ -283,6 +283,13 @@ Las cámaras IP permiten ver en tiempo real qué está pasando en un lugar, aunq
    
 3. Microordenador
    Una cámara IP tiene incorporado un ordenador, pequeño y especializado en ejecutar aplicaciones de red.  
+  
+**Problemas cámaras IP vulnerables**  
+
+Además de temas relacionados con la [privacidad de los ususarios], las vulnerabilidades en cámaras IP también pueden ser utilizadas para llevar a cabo [otro tipo de ataques] a partir de una botnet creada con estos dispositivos.
+
+[privacidad de los ususarios]:https://www.av-test.org/es/noticias/news-single-view/seguridad-de-camaras-ip-ver-y-ser-visto/
+[otro tipo de ataques]:http://www.elperiodico.com/es/sociedad/20161021/ataque-informatico-deja-sin-servicio-dos-horas-twtter-spotify-5579786  
    
 ### Idea inicial  
 
@@ -343,6 +350,16 @@ g + geom_bar()
 
 ```{r, axisVulnsModelCount, include=FALSE}
 vulnerable.models.count <- length(table(shodan_cves_join.no_na$model))
+vulnerable.cams.count <- length(table(shodan_cves_join.no_na$model))
+```
+
+Cruzando la información obtenida tanto de los CVEs como con Shodan, tenemos como resultado las vulnerabilidades presentes entre las cámaras encontradas a nivel mundial. A pesar de lo esprado inicialmente y como ya se ha adelantado en el apartado anterior, sólo se han conseguido encontrar cámaras vulnerables AXIS. Esto se debe principalmente a que la información encontrada con Shodan no ha sido lo suficientemente detallada como para poder extraer todos los datos necesarios para realizar el estudio.  
+
+De esta manera, a nivel mundial, se han encontrado un total de `vulnerable.cams.count` cámaras vulnerables, repartidas de la siguiente manera:
+
+```{r, vulnsByCountry}
+g <- ggplot(shodan_cves_join.no_na, aes(country_code, fill = country_code))
+g + geom_bar()
 ```
 
 Hay que destacar que, a nivel mundial, no se han encontrado cámaras vulnerables AXIS de todo los modelos si no que, en concreto, sólo `vulnerable.models.count` de los modelos pueden ser inseguros.
