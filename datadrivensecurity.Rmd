@@ -1,5 +1,6 @@
 ---
 title: "Data Driven Security"
+author: "Isabel Garcia Padilla, Javier Taberner Nicolas, Roxana Madalina Gogonea"
 output: html_document
 ---
 
@@ -163,6 +164,94 @@ get_camera_software <- function(software_info, shodan_query){
   software_info
 }
 
+## Shodan search function
+shodan_search_function <- function(shodan_query) {
+  result_to_return <- NULL
+  
+  ## Perform first search, by defult it returns the first 100 results
+  result <- shodan_search(query = shodan_query)
+  
+  ## If the result has more than 100 elements, do as many search as needed
+  if (result$total > 100) {
+    result_to_return = rbind(result_to_return, data.frame(country_code = result$matches$location$country_code, 
+                                                          country_name = result$matches$location$country_name, 
+                                                          latitude = result$matches$location$latitude, 
+                                                          longitude = result$matches$location$longitude, 
+                                                          ip_str = result$matches$ip_str, 
+                                                          data = result$matches$data, 
+                                                          vendor = NA, 
+                                                          model = NA, 
+                                                          version = 0, 
+                                                          stringsAsFactors = FALSE))
+
+    for (i in 2:round(result$total/100)) {
+      result <- shodan_search(query = shodan_query, page = i)
+      
+      result_to_return = rbind(result_to_return, data.frame(country_code = result$matches$location$country_code, 
+                                                            country_name = result$matches$location$country_name, 
+                                                            latitude = result$matches$location$latitude, 
+                                                            longitude = result$matches$location$longitude, 
+                                                            ip_str = result$matches$ip_str, 
+                                                            data = result$matches$data, 
+                                                            vendor = NA, 
+                                                            model = NA, 
+                                                            version = 0, 
+                                                            stringsAsFactors = FALSE))
+    }
+  } else {
+    result_to_return <- data.frame(country_code = result$matches$location$country_code, 
+                                   country_name = result$matches$location$country_name, 
+                                   latitude = result$matches$location$latitude, 
+                                   longitude = result$matches$location$longitude, 
+                                   ip_str = result$matches$ip_str, 
+                                   data = result$matches$data, 
+                                   vendor = NA, 
+                                   model = NA, 
+                                   version = 0, 
+                                   stringsAsFactors = FALSE)
+  }
+  
+  ## Once we got the entire list of results, extract the vendor, model and verion values
+  get_camera_software(result_to_return, shodan_query)
+}
+
+## Create a new object in which the shodan results will be saved
+shodan_cameras_data <- NULL
+
+## Perdorm shodan searches 
+for (i in 1:length(shodan_search_list)) {
+  shodan_cameras_data = rbind(shodan_cameras_data, shodan_search_function(shodan_search_list[i]))
+}
+
+## Drop rows with NA values
+shodan_cameras_data <- shodan_cameras_data %>% drop_na()
+```
+
+```{r, mergeShodanAndCVEInfo, include=FALSE}
+## Join shodan search result with cameras CVEs information
+shodan_cves_join <- left_join(shodan_cameras_data, cve_cameras_data)
+
+## Drop rows with NA values 
+shodan_cves_join.no_na <- shodan_cves_join %>% drop_na()
+```
+
+```{r, transformValuesInFactors, include=FALSE}
+## Transform needed fields into factors
+shodan_cves_join.no_na <- transform(shodan_cves_join.no_na, model = factor(model))
+shodan_cves_join.no_na <- transform(shodan_cves_join.no_na, vendor = factor(vendor))
+shodan_cves_join.no_na <- transform(shodan_cves_join.no_na, country_name = factor(country_name))
+
+shodan_cameras_data <- transform(shodan_cameras_data, model = factor(model))
+shodan_cameras_data <- transform(shodan_cameras_data, vendor = factor(vendor))
+shodan_cameras_data <- transform(shodan_cameras_data, country_name = factor(country_name))
+shodan_cameras_data <- transform(shodan_cameras_data, country_code = factor(country_code))
+
+cve_cameras_data <- transform(cve_cameras_data, vendor = factor(vendor))
+cve_cameras_data <- transform(cve_cameras_data, model = factor(model))
+```
+
+```{r, echo=FALSE, results='hide'}
+cve.cameras.count <- nrow(cve_cameras_data)
 ```
 ### Introducción
 La pregunta que ha dado origen a este estudio es saber cuántas cámaras IP (como categoría de cámara digital) están abiertas y pueden ser hackeables, es decir vulnerables, en todo el mundo. En un principio la idea original era averiguar el número de cámaras que podrían ser objeto de vulnerabilidades, pero restringiéndonos a España. La búsqueda no fue muy productiva ya que no encontramos la cantidad suficiente para que el estudio fuera representativo. Por otro lado también hemos tenido limitaciones en cuanto a la búsqueda de los datos debido a que la versión gratuita de Shodan no nos permitía hacer más de “n” búsquedas.  
@@ -222,9 +311,45 @@ Esta última prueba se realizó con la idea de poder obtener otras posibles cám
 1. Hacer las búsquedas de cada uno de los fabricantes escogidos.  
 2. Extraer información relevante a partir de los resultados obtenidos, en concreto nos centramos en obtener el modelo y la versión de cada cámara. Como ya se ha mencionado, cada fabricante muestra lo datos de sus cámaras de una manera distinta, por lo tanto este paso resultó más complejo ya que se tuvo que implementar una función de extracción de información diferente para cada fabricante. Por otro lado, tres de los fabricantes buscados no devuelven información del modelo ni versión, acotando aún más el estudio.  
 
-Una vez obtenida la lista de cámaras junto a su información técnica, se volvió a cruzar con los datos de los CVEs. De esta manera se obtuvieron un total de {VALOR CÁMARAS VULNERABLES} que como en los casos anteriores no son suficentes para poder hacer un estudio real de la situación mundial de las cámaras IP vulnerables. Además como en los casos anteriores, el único fabricante del que se han podido encontrar cámaras vulnerables es AXIS. Esto no quiere decir que los demás fabricantes no lo sean sino que a causa de no disponer de suficientes datos, no se han podido encontrar otras vulnerabilidades.
-   
+Una vez obtenida la lista de cámaras junto a su información técnica, se volvió a cruzar con los datos de los CVEs. De esta manera se obtuvieron un total de `cve.cameras.count` que como en los casos anteriores no son suficentes para poder hacer un estudio real de la situación mundial de las cámaras IP vulnerables. Además como en los casos anteriores, el único fabricante del que se han podido encontrar cámaras vulnerables es AXIS. Esto no quiere decir que los demás fabricantes no lo sean sino que a causa de no disponer de suficientes datos, no se han podido encontrar otras vulnerabilidades.  
   
+  
+###Análisis de resultados  
 
+Como se ha adelantado, la información obtenida no es la suficiente como para poder realizar un estudio concluyente del estado de las vulnerabilidades presentes en las cámaras IP encontradas a nivel mundial.  
+
+Como podemos observar en la siguiente gráfica, el mayor productor, vendedor de cámaras IP, según la informacion que hemos podido obtener es AXIS, ya sea por su precio o por su expansión al mercado del mundo de las camaras IP de videovigilancia o la facilidad de conexión que tiene el usuario de este tipo de cámara.  
+
+```{r, foundCamsByVendor}
+g <- ggplot(shodan_cameras_data, aes(vendor, fill = vendor))
+g + geom_bar()
+```
+
+Por otro lado, AXIS, como fabricante más utilizado por los usuarios y siempre con los datos que disponemos, es casualmente la marca con la que más vulnerabilidades presentan sus productos, concretamente con más de 150.  
+
+```{r, vulnsByVendor}
+g <- ggplot(cve_cameras_data, aes(vendor, fill = vendor))
+g + geom_bar()
+```
+
+A partir de los datos encontrados, se puede observar que es especialmente vulnerable el modelo [AXIS 2100 Network Camera].  
+
+[AXIS 2100 Network Camera]:https://www.axis.com/files/datasheet/2100/2100_es_ds.pdf
+
+```{r, axisVulns}
+g <- ggplot(cve_cameras_data[cve_cameras_data$vendor == "axis",], aes(model, fill = model))
+g + geom_bar()
+```  
+
+```{r, axisVulnsModelCount, include=FALSE}
+vulnerable.models.count <- length(table(shodan_cves_join.no_na$model))
+```
+
+Hay que destacar que, a nivel mundial, no se han encontrado cámaras vulnerables AXIS de todo los modelos si no que, en concreto, sólo `vulnerable.models.count` de los modelos pueden ser inseguros.
+
+```{r, axisVulnsByModel}
+g <- ggplot(shodan_cves_join.no_na[shodan_cves_join.no_na$vendor == "axis",], aes(model, fill = model))
+g + geom_bar()
+```
 
 

@@ -226,3 +226,12 @@ barplot(table(shodan_cameras_data$country_name), col = "wheat", main = "Cámaras
 
 barplot(table(droplevels((subset(cve_cameras_data, vendor == "d-link"))$model)), 
         col = "wheat", main = "Vulnerabilidades d-link")
+
+
+g <- ggplot(shodan_cameras_data, aes(vendor, fill = country_code))
+g + geom_bar()
+barplot(table(cve_cameras_data$vendor), col = "wheat", main = "Vulnerabilidades por fabricante")
+
+axis <- cve_cameras_data[cve_cameras_data$vendor == "axis",]
+g <- ggplot(cve_cameras_data[cve_cameras_data$vendor == "axis",], aes(model, fill = model))
+g + geom_bar()
