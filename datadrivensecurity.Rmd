@@ -2,8 +2,8 @@
 title: "Impacto de las vulnerabilidades en cámaras IP"
 author: "Isabel Garcia Padilla, Javier Taberner Nicolas, Roxana Madalina Gogonea"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -11,8 +11,15 @@ knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r loadPackages, include=FALSE}
+packages <- c("devtools", "tidyr", "dplyr", "stringr", "foreach", "gsubfn", "ggplot2")
+
+lapply(packages, function(x) {
+  library(x, character.only = TRUE)
+})
+
 library(datadrivensecurity)
 devtools::install_github("hrbrmstr/shodan")
+library(shodan)
 ```
 
 ```{r, loadCVEFile, include=FALSE}
