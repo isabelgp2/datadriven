@@ -198,6 +198,7 @@ searchCamerasWithShodan <- function(shodan_query) {
                                                             model = NA, 
                                                             version = 0, 
                                                             stringsAsFactors = FALSE))
+      Sys.sleep(0.5)
     }
   } else {
     result_to_return <- data.frame(country_code = result$matches$location$country_code, 
