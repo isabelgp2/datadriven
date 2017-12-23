@@ -4,6 +4,7 @@ Title: Get vulnerable IP cameras with Shodan
 Version: 0.1.0
 Author: Roxana Gogonea
 Maintainer: The package maintainer <yourself@somewhere.net>
+Description: Get vulnerable IP cameras with Shodan 
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
@@ -14,3 +15,4 @@ Imports:
   foreach,
   gsubfn,
   shodan
+RoxygenNote: 6.0.1

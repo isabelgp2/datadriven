@@ -60,7 +60,7 @@ getVulnerableCamerasCVEs <- function(cves){
     }
   }
   
-  return(cve_cameras_data)
+  cve_cameras_data
 }
 
 
@@ -84,7 +84,7 @@ parseAxisCamera <- function(software_info, regex_camera_search){
       }
     }
   }
-  return(software_info)
+  software_info
 }
 
 #' Parse Sony camera information got from Shodan searches
@@ -107,7 +107,7 @@ parseSonyCamera <- function(software_info, regex_camera_search){
       }
     }
   }
-  return(software_info)
+  software_info
 }
 
 #' Parse D-Link camera information got from Shodan searches
@@ -126,7 +126,7 @@ parseDlinkCamera <- function(software_info, regex_camera_search){
         software_info[i,]$model <- tolower(info[1])
     }
   }
-  return(software_info)
+  software_info
 }
 
 #' Apply parsing functions depending on the camera facturer
@@ -162,7 +162,7 @@ getCameraSoftware <- function(software_info, shodan_query){
     software_info <- parseSonyCamera(software_info, regex_camera_search["sony"])
   }
   
-  return(software_info)
+  software_info
 }
 
 #' Search cameras with Shodan
@@ -229,7 +229,7 @@ getWorldWideCameras <- function(){
   ##Drop rows that have NA values
   shodan_cameras_data <- shodan_cameras_data %>% drop_na()
   
-  return(shodan_cameras_data)
+  shodan_cameras_data
 }
 
 #' Join Shodan results with CVEs information
@@ -243,7 +243,7 @@ leftJoinShodanWithCVEsInfo <- function(shodan_cameras_data, cve_cameras_data){
   ##Join shodan search result with cameras CVEs information
   shodan_cves_join <- left_join(shodan_cameras_data, cve_cameras_data)
   
-  return(shodan_cves_join)
+  shodan_cves_join
 }
 
 #' Remove Na values
@@ -254,7 +254,7 @@ leftJoinShodanWithCVEsInfo <- function(shodan_cameras_data, cve_cameras_data){
 
 getJoinedInfoWithNoNa <- function(df){
   df <- df %>% drop_na()
-  return(df)
+  df
 }
 
 #' Create factor for Shodan results
@@ -268,7 +268,7 @@ createFactorsForShodanData <- function(df){
   df <- transform(df, vendor = factor(vendor))
   df <- transform(df, country_name = factor(country_name))
   df <- transform(df, country_code = factor(country_code))
-  return(df)
+  df
 }
 
 #' Create factor for CVE dataframe
@@ -282,7 +282,7 @@ createFactorsForCVEData <- function(df){
   df <- transform(df, vendor = factor(vendor))
   df <- transform(df, model = factor(model))
   
-  return(df)
+  df
 }
 
 #' Get percentage of AXIS 2100 Network cameras
@@ -306,68 +306,5 @@ calculatePercentOfAxis2100NC <- function(shodan_cves_join) {
   axis.percent$percent <- (axis.percent$freq2/axis.percent$freq1)*100
   axis.percent <- axis.percent %>% drop_na()
   
-  return(axis.percent)
+  axis.percent
 }
-
-# 
-# shodan_cves_join.no_na <- createFactorsForShodanData(shodan_cves_join.no_na)
-# shodan_cameras_data <- createFactorsForShodanData(shodan_cameras_data)
-# createFactorsForCVEData(cve_cameras_data)
-# 
-# ##Show vulnerables cameras worldwide
-# barplot(table(shodan_cves_join.no_na$vendor), col = "wheat", main = "Cámaras vulnerables a nivel mundial")
-# barplot(table(shodan_cves_join.no_na$model), col = "wheat", main = "Cámaras AXIS vulnerables a nivel mundial por modelo")
-# barplot(table(shodan_cves_join.no_na$country_name), col = "wheat", main = "Cámaras AXIS vulnerables a nivel mundial por país")
-# barplot(table(complete.cases(shodan_cves_join)), col = "wheat", main = "Cámaras vulnerables vs no vulnerables")
-# 
-# 
-# sh2 <- shodan_cameras_data[complete.cases(shodan_cameras_data),]
-# barplot(table(cve_cameras_data$vendor), col = "wheat", main = "Vulnerabilidades por fabricante")
-# barplot(table(shodan_cameras_data$country_name), col = "wheat", main = "Cámaras a nivel mundial")
-# 
-# barplot(table(droplevels((subset(cve_cameras_data, vendor == "d-link"))$model)), 
-#         col = "wheat", main = "Vulnerabilidades d-link")
-# 
-# 
-# g <- ggplot(shodan_cameras_data, aes(vendor, fill = country_code))
-# g + geom_bar()
-# barplot(table(cve_cameras_data$vendor), col = "wheat", main = "Vulnerabilidades por fabricante")
-# 
-# g <- ggplot(cve_cameras_data[cve_cameras_data$vendor == "axis",], aes(model, fill = model))
-# g + geom_bar()
-# 
-# g <- ggplot(cve_cameras_data, aes(vendor, fill = model))
-# g + geom_bar() 
-# 
-# g <- ggplot(shodan_cves_join.no_na, aes(country_code, fill = country_code))
-# g + geom_bar()
-# 
-# g <- ggplot(cve_cameras_data[cve_cameras_data$vendor == "axis",], aes(model, fill = version))
-# g + geom_bar()
-# 
-# 
-# 
-# g <- ggplot(shodan_cves_join.no_na[shodan_cves_join.no_na$model == "2100 network camera",], aes(country_code, fill = country_code))
-# g + geom_bar()
-# 
-# 
-# ## Get percent of 2100 network camera by country
-# axis.total <-  data.frame(table(shodan_cves_join.no_na$country_code))
-# colnames(axis.total) <- c("country", "freq1")
-# 
-# axis.2100 <- data.frame(table(shodan_cves_join.no_na[shodan_cves_join.no_na$model == "2100 network camera",]$country_code))
-# colnames(axis.2100) <- c("country", "freq2")
-# 
-# axis.percent <- left_join(axis.total, axis.2100)
-# axis.percent$percent <- (axis.percent$freq2/axis.percent$freq1)*100
-# axis.percent <- axis.percent %>% drop_na()
-# 
-# ggplot(axis.percent, aes(country, percent)) + geom_point(aes(size = percent))
-# 
-# ggplot(cve_cameras_data[cve_cameras_data$vendor == "axis",], aes(model, version)) + geom_point(aes(size = version))
-# 
-# cvss <- data.frame(table(shodan_cves_join.no_na$cvss))
-# ggplot(shodan_cves_join.no_na, aes(cvss, fill = model)) + geom_bar()
-# 
-# ggplot(shodan_cves_join.no_na, aes(country_code, cvss, color = model)) + geom_count()
-# ggplot(shodan_cves_join.no_na, aes(cvss, fill = model)) + geom_histogram(binwidth = 0.5)

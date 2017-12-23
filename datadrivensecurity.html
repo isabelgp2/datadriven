@@ -215,6 +215,24 @@ Con las cámaras IP se puede ver qué está pasando en este preciso momento. El 
 <h3>Conclusiones</h3>
 <p>En primer lugar, como se ha comentado a lo largo del informe, los datos que se han obtenido no han sido suficientes para realizar un estudio detallado y por lo tanto, no nos han permitido contestar a la pregunta hecha inicialmente. Aún así, cabe destacar el gran problema que está suponiendo la falta de aplicación de medidas de seguridad en este tipo de dispositivos. Éstos van desde la creación de botnets hasta problemas de privacidad que irán siendo cada vez más críticos a causa de un aumento masivo en el número de instalaciones de cámaras IP.</p>
 <p>Por lo tanto, los usuarios tienen que estar concienciados de los problemas que este tipo de dispositivos pueden generar y de la importancia de la seguridad para poder evitar ataques informáticos o filtraciones de información no deseada.</p>
+<div id="posibles-soluciones-a-las-vulnerabilidades-de-las-camaras-ip" class="section level4">
+<h4>Posibles soluciones a las vulnerabilidades de las cámaras IP</h4>
+<p>La seguridad de los dispositivos IoT no es la mejor. Muchos fabricantes no se toman la seguridad de sus equipos ni la de los usuarios en serio. Por ejemplo, expertos en seguridad han detectado que las cámaras IP presentan una grave vulnerabilidad, permite anular completamente la seguridad SSL que está presente en estos dispositivos, repercutiendo notablemente en la seguridad de la cámara IP y la información ofrecida.</p>
+<p>Los fallos de seguridad asociados a dispositivos IoT son muy variados. El mayormente detectado compromete seriamente las comunicaciones del dispositivo. En la actualidad, todos los fabricantes basan las soluciones en dispositivos IoT en sistemas cloud. Es decir, para que el usuario pueda acceder y controlar en este caso la cámara IP, se crean servicios en una nube propia del fabricante, facilitando el acceso de los usuarios a sus dispositivos.</p>
+<p>El problema es que para ello es necesario utilizar Internet. Parece bastante fácil obtener información de comunicaciones que no se envían cifradas. Sin ir más lejos, solo sería necesario un programa como Wireshark y estar conectado si es posible a la misma red que el dispositivo.</p>
+<p>Partiendo de que la seguridad de los puntos de acceso Wi-Fi no es a mejor en la mayoría de las situaciones, este segundo punto tampoco sería un problema.</p>
+<p>Pero, ¿y si el dispositivo tampoco ofrece garantías en lo que se refiere a seguridad? Como hemos descubierto en los modelos de diferentes cámaras de Axis. Tenemos todos los ingredientes para que se produzca el robo de información.</p>
+<p>Expertos en seguridad han detectado que los dispositivos de este fabricante, poseen la clave SSL almacenada en el firmware. Es decir, con un programa similar a Binwalk podríamos obtener este dato. Pero el problema es aún mucho más importante. Tras analizar varios modelos, se ha comprobado que la clave es compartida por todos los modelos de cámaras IP. La obtención de esta información permitiría la realización de ataques MitM y el robo de información aunque esta viaje cifrada, ya que se dispone de la clave de acceso. Es decir, la contraseña SSL contenida en el firmware.</p>
+<p>Por qué hay tantas cámaras que disponen de sus propios motores de búsqueda? El problema, en resumen, es que normalmente tanto el usuario como los fabricantes de cámaras priorizan la facilidad de uso por encima de la seguridad del dispositivo. Por eso, las cámaras de vigilancia pueden hackearse fácilmente mediante fuerza bruta.</p>
+<p>Sin embargo, hay métodos para minimizar el riesgo:</p>
+<ol style="list-style-type: decimal">
+<li><p>El primero es actualizar de forma regular el firmware y usar contraseñas seguras (además de cambiarlas a menudo). Las instrucciones para llevar a cabo estos pasos suelen estar en la guía de usuario o la página web de soporte del producto.</p></li>
+<li><p>En segundo lugar, se deberían desactivar las características que no se vayan a usar. Esto se aplica en particular a los diferentes servicios de la nube con los que muchas cámaras web están equipadas por defecto.</p></li>
+<li><p>Habilitar el acceso HTTPS a la cámara, pero en ese caso seguramente se ha de utilizar un certificado autoemitido que haría aparecer varias alertas en el navegador.</p></li>
+<li><p>Modificar el router doméstico para aislar la red interna del exterior, permitiendo así un acceso exclusivo a solo algunas funciones seleccionadas del dispositivo.</p></li>
+<li><p>Un dispositivo intermedio de almacenamiento conectado en red. Hasta las cámaras básicas IP cuentan con un software de videovigilancia.</p></li>
+</ol>
+</div>
 </div>
 <div id="aspectos-a-mejorar-y-trabajos-futuros" class="section level3">
 <h3>Aspectos a mejorar y trabajos futuros</h3>

@@ -11,245 +11,32 @@ knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(cache = TRUE)
 ```
 
-```{r installPackages, include=FALSE}
-packages <- c("devtools", "tidyr", "dplyr", "stringr", "foreach", "gsubfn", "ggplot2")
-
-cran.repos <- "http://cran.us.r-project.org"
-
-lapply(packages, function(x) {
-  if (!require(x))
-    install.packages(x, repos = cran.repos)
-  library(x, character.only = TRUE)
-})
+```{r loadPackages, include=FALSE}
+library(datadrivensecurity)
 devtools::install_github("hrbrmstr/shodan")
-library(shodan)
 ```
 
 ```{r, loadCVEFile, include=FALSE}
-## Download sysdata file that contains CVEs and CPEs information
-download.file(url = "https://github.com/r-net-tools/security.datasets/raw/master/net.security/sysdata.rda", 
-              destfile = "sysdata.rda")
-
-## Load sysdata file
-load("sysdata.rda")
-
-## Create new lists with CVEs information
-
-cves <- netsec.data$datasets$cves
-## Create a searching list that will be used to retrieve the CVEs related to cameras vulnerabilities
-cve_search_list <- c("axis.*?camera", "d-link.*?camera", "tp-link.*?sc", "canon.
-                     *?camera", "vivotek.*?camera", "sony.*?camera")
-
-## Create a list with the fields that will be extracted from the cves data frame
-cve_selected_fields <- c("cve", "cvss", "description", "cpe.software")
-
-## Create a list with the fields in which the cpe information will be divided 
-cpe_fields <- c("cpe", "type", "vendor", "model", "version")
-
-## List with special characters that need to be removed while cleaning the data
-special_chars_to_remove <- c("_", "%")
-
-## Get list of CVEs related to camera vulnerabilities
-cameras <- data.frame(cves %>% filter(str_detect(cpe.software, paste(cve_search_list, collapse = "|"))) %>% select(cve_selected_fields))
-
-## Define a new empty data frame in which the parsed data will be stored
-cve_cameras_data <- data.frame(cve = character(), 
-                               cvss = double(), 
-                               description = character(), 
-                               type = character(), 
-                               vendor = character(), 
-                               model = character(), 
-                               version = double())
-
-##Get the CPE software information and create a new dataframe with the information that is related to cameras
-for (row in 1:nrow(cameras)) {
-  camera <- cameras[row,]
-  
-  ##Parse cpe.software to JSON and filter its information in order to extract only camera related information
-  ##Once filtered, separate fields in cpe fields: cpe, type, vendor, model and version
-  software_list <- data.frame(software = jsonlite::fromJSON(camera$cpe.software), stringsAsFactors = FALSE) %>% filter(str_detect(software, paste(cve_search_list, collapse = "|"))) %>% separate(software, cpe_fields, sep = ":") %>% drop_na() %>% filter(type == "/h")
-  
-  if (nrow(software_list)[1] > 0) {
-    ##Remove special chars
-    software_list$model <- gsub(paste(special_chars_to_remove, collapse = "|"), ' ', software_list$model)
-    
-    cve_cameras_data = rbind(cve_cameras_data, data.frame(camera[1:3], software_list[2:5])) 
-  }
-}
+cves <- downloadCVEData()
+cve_cameras_data <- getVulnerableCamerasCVEs(cves)
 ```
 
 ```{r, getShodanInformation, include=FALSE}
-## Setup a list with searching values
-shodan_search_list <- c("axis camera", "d-link dcs", "tp-link ip-camera", 
-                        "canon network camera", "vivotek camera", "sony camera")
-
-## List with regex expressions needed to get the cameras information from Shodan results
-regex_camera_search <- list(axis = "((AXIS|Axis).*Camera.(\\w)+(.(\\d)+)+)", 
-                            dlink = "(DCS-(\\d)+\\w)", tplink = "TP-Link IP-Camera", 
-                            canon = "Canon Network Camera", vivotek = "Vivotek Network Camera", 
-                            sony = "((SONY|Sony).Network Camera.(\\w)+-(\\w)+)")
-
-## Function that parses AXIS cameras informtion
-## It returns the input dataset with vendor, model and version values                          
-parse_axis_camera <- function(software_info){
-  for (i in 1:nrow(software_info)) {
-    ## Apply regex
-    rgx <- strapply(software_info[i,]$data, regex_camera_search["axis"])
-    if (length(rgx) > 0 && !is.null(rgx[[1]])) {
-      info <- strsplit(unlist(rgx), " ")
-      if (length(info) > 0) {
-        ## Set vendor, model and version information
-        info <- info[[1]]
-        software_info[i,]$vendor <- "axis"
-        software_info[i,]$model <- tolower(paste(info[2:(length(info)-1)], collapse = " "))
-        software_info[i,]$version <- info[length(info)]
-      }
-    }
-  }
-  software_info
-}
-
-## Function that parses Sony cameras informtion
-## It returns the input dataset with vendor, model and version values
-parse_sony_camera <- function(software_info){
-  for (i in 1:nrow(software_info)) {
-    ## Apply regex
-    rgx <- strapply(software_info[i,]$data, regex_camera_search["sony"])
-    if (length(rgx) > 0 && !is.null(rgx[[1]])) {
-      info <- strsplit(unlist(rgx), " ")
-      if (length(info) > 0) {
-        ## Set vendor, model and version information
-        info <- info[[1]]
-        software_info[i,]$vendor <- "sony"
-        software_info[i,]$model <- tolower(paste(info[2:(length(info)-1)], collapse = " "))
-        software_info[i,]$version <- tolower(info[length(info)])
-      }
-    }
-  }
-  software_info
-}
-
-## Function that parses D-Link cameras informtion
-## It returns the input dataset with vendor, model and version values
-parse_dlink_camera <- function(software_info){
-  for (i in 1:nrow(software_info)) {
-    rgx <- strapply(software_info[i,]$data, regex_camera_search["dlink"])
-    if (length(rgx) > 0 && !is.null(rgx[[1]])) {
-        ## Set vendor and model information
-        info <- rgx[[1]]
-        software_info[i,]$vendor <- "d-link"
-        software_info[i,]$model <- tolower(info[1])
-    }
-  }
-  software_info
-}
-
-## Get software information depending on the camera vendor
-get_camera_software <- function(software_info, shodan_query){
-  if (shodan_query == shodan_search_list[1]) {
-    software_info <- parse_axis_camera(software_info)
-  } else if (shodan_query == shodan_search_list[2]) {
-    software_info <- parse_dlink_camera(software_info)
-  } else if (shodan_query == shodan_search_list[3]) {
-    software_info$vendor <- "tp-link"
-    software_info$model <- "ip-camera"
-  } else if (shodan_query == shodan_search_list[4]) {
-    software_info$vendor <- "canon"
-    software_info$model <- "network camera"
-  } else if (shodan_query == shodan_search_list[5]) {
-    software_info$vendor <- "vivotek"
-    software_info$model <- "network camera"
-  } else if (shodan_query == shodan_search_list[6]) {
-    software_info <- parse_sony_camera(software_info)
-  }
-  
-  software_info
-}
-
-## Shodan search function
-shodan_search_function <- function(shodan_query) {
-  result_to_return <- NULL
-  
-  ## Perform first search, by defult it returns the first 100 results
-  result <- shodan_search(query = shodan_query)
-  
-  ## If the result has more than 100 elements, do as many search as needed
-  if (result$total > 100) {
-    result_to_return = rbind(result_to_return, data.frame(country_code = result$matches$location$country_code, 
-                                                          country_name = result$matches$location$country_name, 
-                                                          latitude = result$matches$location$latitude, 
-                                                          longitude = result$matches$location$longitude, 
-                                                          ip_str = result$matches$ip_str, 
-                                                          data = result$matches$data, 
-                                                          vendor = NA, 
-                                                          model = NA, 
-                                                          version = 0, 
-                                                          stringsAsFactors = FALSE))
-
-    for (i in 2:round(result$total/100)) {
-      result <- shodan_search(query = shodan_query, page = i)
-      
-      result_to_return = rbind(result_to_return, data.frame(country_code = result$matches$location$country_code, 
-                                                            country_name = result$matches$location$country_name, 
-                                                            latitude = result$matches$location$latitude, 
-                                                            longitude = result$matches$location$longitude, 
-                                                            ip_str = result$matches$ip_str, 
-                                                            data = result$matches$data, 
-                                                            vendor = NA, 
-                                                            model = NA, 
-                                                            version = 0, 
-                                                            stringsAsFactors = FALSE))
-    }
-  } else {
-    result_to_return <- data.frame(country_code = result$matches$location$country_code, 
-                                   country_name = result$matches$location$country_name, 
-                                   latitude = result$matches$location$latitude, 
-                                   longitude = result$matches$location$longitude, 
-                                   ip_str = result$matches$ip_str, 
-                                   data = result$matches$data, 
-                                   vendor = NA, 
-                                   model = NA, 
-                                   version = 0, 
-                                   stringsAsFactors = FALSE)
-  }
-  
-  ## Once we got the entire list of results, extract the vendor, model and verion values
-  get_camera_software(result_to_return, shodan_query)
-}
-
-## Create a new object in which the shodan results will be saved
-shodan_cameras_data <- NULL
-
-## Perdorm shodan searches 
-for (i in 1:length(shodan_search_list)) {
-  shodan_cameras_data = rbind(shodan_cameras_data, shodan_search_function(shodan_search_list[i]))
-}
-
-## Drop rows with NA values
-shodan_cameras_data <- shodan_cameras_data %>% drop_na()
+shodan_cameras_data <- getVulnerableCameras()
 ```
 
 ```{r, mergeShodanAndCVEInfo, include=FALSE}
 ## Join shodan search result with cameras CVEs information
-shodan_cves_join <- left_join(shodan_cameras_data, cve_cameras_data)
-
-## Drop rows with NA values 
-shodan_cves_join.no_na <- shodan_cves_join %>% drop_na()
+shodan_cves_join <- leftJoinShodanWithCVEsInfo(shodan_cameras_data, cve_cameras_data)
 ```
 
 ```{r, transformValuesInFactors, include=FALSE}
+
 ## Transform needed fields into factors
-shodan_cves_join.no_na <- transform(shodan_cves_join.no_na, model = factor(model))
-shodan_cves_join.no_na <- transform(shodan_cves_join.no_na, vendor = factor(vendor))
-shodan_cves_join.no_na <- transform(shodan_cves_join.no_na, country_name = factor(country_name))
-
-shodan_cameras_data <- transform(shodan_cameras_data, model = factor(model))
-shodan_cameras_data <- transform(shodan_cameras_data, vendor = factor(vendor))
-shodan_cameras_data <- transform(shodan_cameras_data, country_name = factor(country_name))
-shodan_cameras_data <- transform(shodan_cameras_data, country_code = factor(country_code))
-
-cve_cameras_data <- transform(cve_cameras_data, vendor = factor(vendor))
-cve_cameras_data <- transform(cve_cameras_data, model = factor(model))
+shodan_cves_join.no_na <- getJoinedInfoWithNoNa(shodan_cves_join)
+shodan_cves_join.no_na <- createFactorsForShodanData(shodan_cves_join.no_na)
+shodan_cameras_data <- createFactorsForShodanData(shodan_cameras_data)
+cve_cameras_data <- createFactorsForCVEData(cve_cameras_data)
 ```
 
 ```{r, echo=FALSE, results='hide'}
@@ -406,16 +193,7 @@ g + geom_bar() + labs(title = "Repartición de modelos de cámaras AXIS a nivel 
 Dada la lista de países que cuentan con cámaras vulnerables AXIS y sabiendo que el modelo 2100 Network Camera es el más vulnerable, podríamos determinar en qué medida los países que cuentan con cámaras AXIS se ven afectados por este modelo.
 
 ```{r, calculatePercentOf2100Axis, include=FALSE}
-## Get percent of 2100 network camera by country
-axis.total <-  data.frame(table(shodan_cves_join.no_na$country_code))
-colnames(axis.total) <- c("country", "freq1")
-
-axis.2100 <- data.frame(table(shodan_cves_join.no_na[shodan_cves_join.no_na$model == "2100 network camera",]$country_code))
-colnames(axis.2100) <- c("country", "freq2")
-
-axis.percent <- left_join(axis.total, axis.2100)
-axis.percent$percent <- (axis.percent$freq2/axis.percent$freq1)*100
-axis.percent <- axis.percent %>% drop_na()
+axis.percent <- calculatePercentOfAxis2100NC(shodan_cves_join)
 ```
 
 ```{r, percentOf2100Axis, warning=FALSE, fig.align='center'}
@@ -441,6 +219,35 @@ En primer lugar, como se ha comentado a lo largo del informe, los datos que se h
 
 Por lo tanto, los usuarios tienen que estar concienciados de los problemas que este tipo de dispositivos pueden generar y de la importancia de la seguridad para poder evitar ataques informáticos o filtraciones de información no deseada.  
   
+  
+#### Posibles soluciones a las vulnerabilidades de las cámaras IP  
+
+La seguridad de los dispositivos IoT no es la mejor. Muchos fabricantes no se toman la seguridad de sus equipos ni la de los usuarios en serio. Por ejemplo, expertos en seguridad han detectado que las cámaras IP presentan una grave vulnerabilidad, permite anular completamente la seguridad SSL que está presente en estos dispositivos, repercutiendo notablemente en la seguridad de la cámara IP y la información ofrecida.  
+
+Los fallos de seguridad asociados a dispositivos IoT son muy variados. El mayormente detectado compromete seriamente las comunicaciones del dispositivo. En la actualidad, todos los fabricantes basan las soluciones en dispositivos IoT en sistemas cloud. Es decir, para que el usuario pueda acceder y controlar en este caso la cámara IP, se crean servicios en una nube propia del fabricante, facilitando el acceso de los usuarios a sus dispositivos.    
+
+El problema es que para ello es necesario utilizar Internet. Parece bastante fácil obtener información de comunicaciones que no se envían cifradas. Sin ir más lejos, solo sería necesario un programa como Wireshark y estar conectado si es posible a la misma red que el dispositivo.  
+
+Partiendo de que la seguridad de los puntos de acceso Wi-Fi no es a mejor en la mayoría de las situaciones, este segundo punto tampoco sería un problema.  
+
+Pero, ¿y si el dispositivo tampoco ofrece garantías en lo que se refiere a seguridad? Como hemos descubierto en los modelos de diferentes cámaras de Axis. Tenemos todos los ingredientes para que se produzca el robo de información.  
+
+Expertos en seguridad han detectado que los dispositivos de este fabricante, poseen la clave SSL almacenada en el firmware. Es decir, con un programa similar a Binwalk podríamos obtener este dato. Pero el problema es aún mucho más importante. Tras analizar varios modelos, se ha comprobado que la clave es compartida por todos los modelos de cámaras IP. La obtención de esta información permitiría la realización de ataques MitM y el robo de información aunque esta viaje cifrada, ya que se dispone de la clave de acceso. Es decir, la contraseña SSL contenida en el firmware.  
+
+Por qué hay tantas cámaras que disponen de sus propios motores de búsqueda? El problema, en resumen, es que normalmente tanto el usuario como los fabricantes de cámaras priorizan la facilidad de uso por encima de la seguridad del dispositivo. Por eso, las cámaras de vigilancia pueden hackearse fácilmente mediante fuerza bruta. 
+
+Sin embargo, hay métodos para minimizar el riesgo:  
+
+1. El primero es actualizar de forma regular el firmware y usar contraseñas seguras (además de cambiarlas a menudo). Las instrucciones para llevar a cabo estos pasos suelen estar en la guía de usuario o la página web de soporte del producto.  
+
+2. En segundo lugar, se deberían desactivar las características que no se vayan a usar. Esto se aplica en particular a los diferentes servicios de la nube con los que muchas cámaras web están equipadas por defecto.  
+
+3. Habilitar el acceso HTTPS a la cámara, pero en ese caso seguramente se ha de utilizar un certificado autoemitido que haría aparecer varias alertas en el navegador.  
+
+4. Modificar el router doméstico para aislar la red interna del exterior, permitiendo así un acceso exclusivo a solo algunas funciones seleccionadas del dispositivo.  
+
+5. Un dispositivo intermedio de almacenamiento conectado en red. Hasta las cámaras básicas IP cuentan con un software de videovigilancia.  
+
 
 ### Aspectos a mejorar y trabajos futuros  
 
