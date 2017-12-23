@@ -235,8 +235,38 @@ barplot(table(cve_cameras_data$vendor), col = "wheat", main = "Vulnerabilidades 
 g <- ggplot(cve_cameras_data[cve_cameras_data$vendor == "axis",], aes(model, fill = model))
 g + geom_bar()
 
+g <- ggplot(cve_cameras_data, aes(vendor, fill = model))
+g + geom_bar() 
+
 g <- ggplot(shodan_cves_join.no_na, aes(country_code, fill = country_code))
 g + geom_bar()
 
 g <- ggplot(cve_cameras_data[cve_cameras_data$vendor == "axis",], aes(model, fill = version))
 g + geom_bar()
+
+
+
+g <- ggplot(shodan_cves_join.no_na[shodan_cves_join.no_na$model == "2100 network camera",], aes(country_code, fill = country_code))
+g + geom_bar()
+
+
+## Get percent of 2100 network camera by country
+axis.total <-  data.frame(table(shodan_cves_join.no_na$country_code))
+colnames(axis.total) <- c("country", "freq1")
+
+axis.2100 <- data.frame(table(shodan_cves_join.no_na[shodan_cves_join.no_na$model == "2100 network camera",]$country_code))
+colnames(axis.2100) <- c("country", "freq2")
+
+axis.percent <- left_join(axis.total, axis.2100)
+axis.percent$percent <- (axis.percent$freq2/axis.percent$freq1)*100
+axis.percent <- axis.percent %>% drop_na()
+
+ggplot(axis.percent, aes(country, percent)) + geom_point(aes(size = percent))
+
+ggplot(cve_cameras_data[cve_cameras_data$vendor == "axis",], aes(model, version)) + geom_point(aes(size = version))
+
+cvss <- data.frame(table(shodan_cves_join.no_na$cvss))
+ggplot(shodan_cves_join.no_na, aes(cvss, fill = model)) + geom_bar()
+
+ggplot(shodan_cves_join.no_na, aes(country_code, cvss, color = model)) + geom_count()
+ggplot(shodan_cves_join.no_na, aes(cvss, fill = model)) + geom_histogram(binwidth = 0.5)

@@ -1,5 +1,5 @@
 ---
-title: "Data Driven Security"
+title: "Impacto de las vulnerabilidades en cámaras IP"
 author: "Isabel Garcia Padilla, Javier Taberner Nicolas, Roxana Madalina Gogonea"
 output: html_document
 ---
@@ -254,9 +254,7 @@ cve_cameras_data <- transform(cve_cameras_data, model = factor(model))
 cve.cameras.count <- nrow(cve_cameras_data)
 ```
 ### Introducción
-La pregunta que ha dado origen a este estudio es saber cuántas cámaras IP (como categoría de cámara digital) están abiertas y pueden ser hackeables, es decir vulnerables, en todo el mundo. En un principio la idea original era averiguar el número de cámaras que podrían ser objeto de vulnerabilidades, pero restringiéndonos a España. La búsqueda no fue muy productiva ya que no encontramos la cantidad suficiente para que el estudio fuera representativo. Por otro lado también hemos tenido limitaciones en cuanto a la búsqueda de los datos debido a que la versión gratuita de Shodan no nos permitía hacer más de “n” búsquedas.  
-  
-  
+La pregunta que ha dado origen a este estudio es saber cuántas cámaras IP (como categoría de cámara digital) están abiertas y pueden ser hackeadas, es decir vulnerables, en todo el mundo. En un principio la idea original era averiguar el número de cámaras que podrían ser objeto de vulnerabilidades, pero restringiéndonos a España. La búsqueda no fue muy productiva ya que no encontramos la cantidad suficiente para que el estudio fuera representativo. Por otro lado también hemos tenido limitaciones en cuanto a la búsqueda de los datos debido a que la versión gratuita de Shodan no nos permitía hacer más de “n” búsquedas.  
   
 #### ¿Por qué cámaras IP? 
 Una cámara IP es una cámara que emite las imágenes directamente a la intranet o internet sin necesidad de un ordenador.  
@@ -286,14 +284,33 @@ Las cámaras IP permiten ver en tiempo real qué está pasando en un lugar, aunq
   
 **Problemas cámaras IP vulnerables**  
 
-Además de temas relacionados con la [privacidad de los ususarios], las vulnerabilidades en cámaras IP también pueden ser utilizadas para llevar a cabo [otro tipo de ataques] a partir de una botnet creada con estos dispositivos.
+Además de temas relacionados con la [privacidad de los ususarios], las vulnerabilidades en cámaras IP también pueden ser utilizadas para llevar a cabo [otro tipo de ataques] a partir de botnets creadas con estos dispositivos.
 
 [privacidad de los ususarios]:https://www.av-test.org/es/noticias/news-single-view/seguridad-de-camaras-ip-ver-y-ser-visto/
 [otro tipo de ataques]:http://www.elperiodico.com/es/sociedad/20161021/ataque-informatico-deja-sin-servicio-dos-horas-twtter-spotify-5579786  
+
+Este tipo de objetos son altamente vulnerables ya que gran parte de sus usuarios no dan la importancia que haría falta a las configuraciones de seguridad, dejando en muchas ocasiones contraseñas por defecto o directamente sin ningún tipo de protección.  
+
+Internet nos ofrece varias maneras de buscar las cámaras que se encuentran accesibles desde cualquier parte del mundo, siendo la más conocida y utilizada [Shodan]. Este buscador nos permite buscar todo tipo de dispositivos conectado a internet. Para ofrecer este servicio, Shodan recorre toda la red mandando peticiones a puertos y esperando su respuesta, toda esta información la va almacenando en una base de datos y cualquier usuario puede consultarla.  
+
+[Shodan]:https://www.shodan.io/
+
+Pero también hay páginas como [Insecam] que se encargan de hacer las búsquedas por nosotros y nos ofrecen un listado con todas las cámaras accesibles. Visitado esta web, se puede ver que estas cámaras graban todo tipo de lugares: negocios, garajes, carreteras, hoteles e incluso hogares.
+
+[Insecam]:http://www.insecam.org/
+
+Lo más grave de estas webs es que no sólo nos proporcionan la imagen que emiten las cámaras, sino también su ubicación y aquí es donde nuestra seguridad física y no solo intromisión privada que unas imágenes que se emiten al mundo, ya que dicta físicamente donde nos situamos. Este hecho ha generado nuevos problemas, uno de ello siendo el aumento en [robos en hogares].  
+
+[robos en hogares]:https://www.av-test.org/es/noticias/news-single-view/seguridad-de-camaras-ip-ver-y-ser-visto/
    
+Por otro lado, hay que destacar que año tras año el número de cámaras de videovigilancia se ha visto aumentado no sólo a nivel mundial sino también a [nivel estatal]. Este hecho multiplica los problemas de privacidad con los que tienen que lidiar instituciones como la [AEPD].
+
+[nivel estatal]:https://www.elconfidencial.com/espana/2015-07-20/gran-hermano-videovigilancia-privacidad-proteccion-datos_932611/
+[AEPD]:http://www.agpd.es/portalwebAGPD/index-ides-idphp.php
+
 ### Idea inicial  
 
-La pregunta inicial constaba en determinar qué cámaras de las que hay abiertas publicamente, no cumplían con la ley de protección de datos. Para ello, la idea era utilizar la información devuelta por la API de Shodan. Esta devuelve un listado en formato JSON de la información que recoge de cada cámara encontrada. La idea consistía en intentar determinar en cada una de los objetos devueltos, ciertas palabras clave que nos permitiesen determinar si se trataba de una cámara que pudiera mostrar contenido que infringiese la ley de protección de datos.  
+La pregunta inicial constaba en determinar qué cámaras de las que hay abiertas públicamente, no cumplían con la ley de protección de datos. Para ello, la idea era utilizar la información devuelta por la API de Shodan. Esta devuelve un listado en formato JSON de la información que recoge de cada cámara encontrada. La idea consistía en intentar determinar en cada una de los objetos devueltos, ciertas palabras clave que nos permitiesen determinar si se trataba de una cámara que pudiera mostrar contenido que infringiese la ley de protección de datos.  
 
 A lo largo de esta fase se han encontrado varios problemas que han supuesto un cambio en la pregunta inicial. En primer lugar, al disponer de una cuenta gratuita de Shodan, la utilización de su API para este tipo de usuarios es limitada, permitiendo sólo obtener las 100 primeras búsquedas y no dejando utilizar filtros que permiten afinar más las búsquedas. Por otro lado, en los resultados de las búsquedas, no se nos devolvía información sobre qué podrían estar enfocando las cámaras por lo tanto, la idea inicial de utilizar palabras clave para poder clasificarlas no se podría aplicar. Por otro lado, en un primer instante se pensó acotar el estudio a España pero dado que la información encontrada no representaba un gran volumen de datos, se decidió hacer un estudio a nivel mundial.  
 
@@ -309,7 +326,7 @@ Cómo se verá a continuación, a pesar de la gran variedad de fabricantes de c�
 
 En un primer instante se pensó en extraer toda la información relacionada con cámaras de los CPEs, posteriormente filtrar los CVEs que estuviesen relacionados con vulnerabilidades de cámaras encontradas en los CPEs y por último, con la ayuda de Shodan hacer las búsquedas que nos permitiesen determinar cuántas cámaras se veían afectadas por estos fallos de seguridad. El problema que tuvimos es que, buscando vulnerabilidades, observamos que había información sobre cámaras que no estaban presentes en el fichero de los CPEs, por lo tanto descartamos hacer la búsqueda a partir de los CPEs.  
 
-En la siguiente prueba, nos centramos en extraer los CVEs que definiesen una vulnerabilidad relacionada con cámaras IP y una vez obtenida dicha información, buscar cuántas cámaras, junto a sus modelos y versiones, se veian afectadas a nivel mundial por estas vulnerabilidades. Pero a causa de hacer búsquedas muy acotadas, los resultados obtenidos no fueron suficientes para poder sacar ningún tipo de conclusiones.  
+En la siguiente prueba, nos centramos en extraer los CVEs que definiesen una vulnerabilidad relacionada con cámaras IP y una vez obtenida dicha información, buscar cuántas cámaras, junto a sus modelos y versiones, se veían afectadas a nivel mundial por estas vulnerabilidades. Pero a causa de hacer búsquedas muy acotadas, los resultados obtenidos no fueron suficientes para poder sacar ningún tipo de conclusiones.  
 
 En la tercera y última prueba, intentamos hacer búsquedas más genéricas, por fabricantes de cámaras IP y posteriormente extraer información sobre modelos y versiones a partir de los resultados devueltos por Shodan. De esta manera, analizando los resultados que Shodan devuelve al hacer búsquedas por diferentes modelos de cámaras, se escogieron los siguientes fabricantes: **AXIS, D-Link, TP-Link, Canon, Vivotek y Sony**. El criterio de selección de cámaras se basó en analizar qué resultados de Shodan nos devolvían información extra sobre modelo y versión de cámaras. Esto último fue un problema ya que cada fabricante muestra los datos de sus cámaras de una manera distinta y no todos hacen pública esta información por lo tanto Shodan no la puede indexar.  
 
@@ -318,55 +335,117 @@ Esta última prueba se realizó con la idea de poder obtener otras posibles cám
 1. Hacer las búsquedas de cada uno de los fabricantes escogidos.  
 2. Extraer información relevante a partir de los resultados obtenidos, en concreto nos centramos en obtener el modelo y la versión de cada cámara. Como ya se ha mencionado, cada fabricante muestra lo datos de sus cámaras de una manera distinta, por lo tanto este paso resultó más complejo ya que se tuvo que implementar una función de extracción de información diferente para cada fabricante. Por otro lado, tres de los fabricantes buscados no devuelven información del modelo ni versión, acotando aún más el estudio.  
 
-Una vez obtenida la lista de cámaras junto a su información técnica, se volvió a cruzar con los datos de los CVEs. De esta manera se obtuvieron un total de `cve.cameras.count` que como en los casos anteriores no son suficentes para poder hacer un estudio real de la situación mundial de las cámaras IP vulnerables. Además como en los casos anteriores, el único fabricante del que se han podido encontrar cámaras vulnerables es AXIS. Esto no quiere decir que los demás fabricantes no lo sean sino que a causa de no disponer de suficientes datos, no se han podido encontrar otras vulnerabilidades.  
+Una vez obtenida la lista de cámaras junto a su información técnica, se volvió a cruzar con los datos de los CVEs. De esta manera se obtuvieron un total de `r cve.cameras.count ` que como en los casos anteriores no son suficientes para poder hacer un estudio real de la situación mundial de las cámaras IP vulnerables. Además como en los casos anteriores, el único fabricante del que se han podido encontrar cámaras vulnerables es AXIS. Esto no quiere decir que los demás fabricantes no lo sean sino que a causa de no disponer de suficientes datos, no se han podido encontrar otras vulnerabilidades.  
   
   
 ###Análisis de resultados  
 
 Como se ha adelantado, la información obtenida no es la suficiente como para poder realizar un estudio concluyente del estado de las vulnerabilidades presentes en las cámaras IP encontradas a nivel mundial.  
 
-Como podemos observar en la siguiente gráfica, el mayor productor, vendedor de cámaras IP, según la informacion que hemos podido obtener es AXIS, ya sea por su precio o por su expansión al mercado del mundo de las camaras IP de videovigilancia o la facilidad de conexión que tiene el usuario de este tipo de cámara.  
+Como podemos observar en la siguiente gráfica, el mayor productor, vendedor de cámaras IP, según la información que hemos podido obtener es AXIS, fabricante sueco de cámaras de red para las industrias de seguridad física y videovigilancia. Su gran expansión se debe ya sea a su precio o a su expansión al mercado del mundo de las cámaras IP de videovigilancia. Esta marca es seguida por D-Link y TP-Link, proveedores no sólo de cámaras IP si no también de otros tipos de equipos de red.
 
-```{r, foundCamsByVendor}
+```{r, foundCamsByVendor, fig.align='center'}
 g <- ggplot(shodan_cameras_data, aes(vendor, fill = vendor))
-g + geom_bar()
+g + geom_bar() + labs(title = "Recuento de cámaras IP a nivel mundial", y = "Recuento de cámaras", x = "Fabricante", fill = "Fabricante")
 ```
 
-Por otro lado, AXIS, como fabricante más utilizado por los usuarios y siempre con los datos que disponemos, es casualmente la marca con la que más vulnerabilidades presentan sus productos, concretamente con más de 150.  
+```{r, axisVulnsCount, fig.align='center'}
+axis.vulns.count <- nrow(cve_cameras_data[cve_cameras_data$vendor == "axis",])
+```
 
-```{r, vulnsByVendor}
-g <- ggplot(cve_cameras_data, aes(vendor, fill = vendor))
-g + geom_bar()
+Por otro lado, AXIS, como fabricante más utilizado por los usuarios y siempre con los datos que disponemos, es casualmente la marca con la que más vulnerabilidades presentan sus productos, concretamente `r axis.vulns.count `. 
+
+```{r, vulnsByVendor, fig.align='center'}
+g <- ggplot(cve_cameras_data, aes(vendor, fill = model))
+g + geom_bar() + labs(title = "Recuento de vulnerabilidades por fabricante", y = "Recuento de vulnerabilidades", x = "Fabricante", fill = "Modelo")
 ```
 
 A partir de los datos encontrados, se puede observar que es especialmente vulnerable el modelo [AXIS 2100 Network Camera].  
 
 [AXIS 2100 Network Camera]:https://www.axis.com/files/datasheet/2100/2100_es_ds.pdf
 
-```{r, axisVulns}
-g <- ggplot(cve_cameras_data[cve_cameras_data$vendor == "axis",], aes(model, fill = model))
-g + geom_bar()
+```{r, axisVulns, fig.align='center'}
+g <- ggplot(cve_cameras_data[cve_cameras_data$vendor == "axis",], aes(model, fill = version))
+g + geom_bar() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + labs(title = "Recuento de vulnerabilidades cámaras AXIS", y = "Recuento de vulnerabilidades", x = "Modelo", fill = "Versión")
 ```  
 
+Por otro lado, analizando sus versiones, no se puede determinar ningún patrón relacionado con este dato ya que como se puede observar en la gráfica anterior, las vulnerabilidades están repartidas entre todas las versiones, por lo tanto no se podría decir que una versión en concreto es más segura que otra.  
+
 ```{r, axisVulnsModelCount, include=FALSE}
+vulnerable.cams.count <- nrow(shodan_cves_join.no_na)
 vulnerable.models.count <- length(table(shodan_cves_join.no_na$model))
-vulnerable.cams.count <- length(table(shodan_cves_join.no_na$model))
 ```
 
-Cruzando la información obtenida tanto de los CVEs como con Shodan, tenemos como resultado las vulnerabilidades presentes entre las cámaras encontradas a nivel mundial. A pesar de lo esprado inicialmente y como ya se ha adelantado en el apartado anterior, sólo se han conseguido encontrar cámaras vulnerables AXIS. Esto se debe principalmente a que la información encontrada con Shodan no ha sido lo suficientemente detallada como para poder extraer todos los datos necesarios para realizar el estudio.  
+Cruzando la información obtenida tanto de los CVEs como con Shodan, tenemos como resultado las vulnerabilidades presentes entre las cámaras encontradas a nivel mundial. A pesar de lo esperado inicialmente y como ya se ha adelantado en el apartado anterior, sólo se han conseguido encontrar cámaras vulnerables AXIS. Esto se debe principalmente a que la información encontrada con Shodan no ha sido lo suficientemente detallada como para poder extraer todos los datos necesarios para realizar el estudio.  
 
-De esta manera, a nivel mundial, se han encontrado un total de `vulnerable.cams.count` cámaras vulnerables, repartidas de la siguiente manera:
+De esta manera, a nivel mundial, se han encontrado un total de `r vulnerable.cams.count ` cámaras vulnerables, repartidas de la siguiente manera:
 
-```{r, vulnsByCountry}
-g <- ggplot(shodan_cves_join.no_na, aes(country_code, fill = country_code))
-g + geom_bar()
+```{r, vulnsByCountry, fig.align='center'}
+g <- ggplot(shodan_cves_join.no_na, aes(country_code, fill = vendor))
+g + geom_bar() + labs(title = "Recuento de vulnerabilidades por país", y = "Recuento de vulnerabilidades", x = "País", fill = "Fabricante")
 ```
 
-Hay que destacar que, a nivel mundial, no se han encontrado cámaras vulnerables AXIS de todo los modelos si no que, en concreto, sólo `vulnerable.models.count` de los modelos pueden ser inseguros.
+Hay que destacar que, a nivel mundial, no se han encontrado cámaras vulnerables AXIS de todo los modelos si no que, en concreto, sólo `r vulnerable.models.count ` presentan problemas de seguridad.
 
-```{r, axisVulnsByModel}
-g <- ggplot(shodan_cves_join.no_na[shodan_cves_join.no_na$vendor == "axis",], aes(model, fill = model))
-g + geom_bar()
+```{r, axisVulnsByModel, fig.align='center'}
+g <- ggplot(shodan_cves_join.no_na[shodan_cves_join.no_na$vendor == "axis",], aes(model, fill = version))
+g + geom_bar() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + labs(title = "Recuento de modelos de cámaras vulnerables a nivel mundial", y = "Recuento por modelo", x = "Modelo", fill = "Versión")
 ```
 
+De esta manera, los diferentes modelos vulnerables se reparten de la siguiente forma:  
 
+```{r, axisVulnsByCountryAndModel, fig.align='center'}
+g <- ggplot(shodan_cves_join.no_na[shodan_cves_join.no_na$vendor == "axis",], aes(country_code, fill = model))
+g + geom_bar() + labs(title = "Repartición de modelos de cámaras AXIS a nivel mundial", y = "Recuento de cámaras vunerables", x = "País", fill = "Fabricante")
+```
+
+Dada la lista de países que cuentan con cámaras vulnerables AXIS y sabiendo que el modelo 2100 Network Camera es el más vulnerable, podríamos determinar en qué medida los países que cuentan con cámaras AXIS se ven afectados por este modelo.
+
+```{r, calculatePercentOf2100Axis, include=FALSE}
+## Get percent of 2100 network camera by country
+axis.total <-  data.frame(table(shodan_cves_join.no_na$country_code))
+colnames(axis.total) <- c("country", "freq1")
+
+axis.2100 <- data.frame(table(shodan_cves_join.no_na[shodan_cves_join.no_na$model == "2100 network camera",]$country_code))
+colnames(axis.2100) <- c("country", "freq2")
+
+axis.percent <- left_join(axis.total, axis.2100)
+axis.percent$percent <- (axis.percent$freq2/axis.percent$freq1)*100
+axis.percent <- axis.percent %>% drop_na()
+```
+
+```{r, percentOf2100Axis, warning=FALSE, fig.align='center'}
+ggplot(axis.percent, aes(country, percent)) + geom_point(aes(size = percent)) + labs(title = "Repartición de cámaras vulnerables AXIS 2100 Network Camera", y = "Porcentaje de cámaras vulnerables", x = "País", size = "Porcentaje")
+```
+
+Pero el número de cámaras vulnerables no es el único dato importante a la hora de analizar cómo de inseguro es un dispositivo si no que hay otro dato, llamado CVSS (Common Vulnerability Scoring System) que nos permite determinar la gravedad de una vulnerabilidad. De esta manera, volviendo a la lista de vulnerabilidades encontradas a nivel mundial, podemos determinar cómo de grave puede llegar a ser el impacto de éstas.  
+
+```{r, cvssImpactAxis, warning=FALSE, message=FALSE, fig.align='center'}
+axis.cvss <- data.frame(table(shodan_cves_join.no_na$cvss))
+ggplot(shodan_cves_join.no_na, aes(cvss, fill = model)) + geom_histogram(binwidth = 1) + labs(title = "Recueto de valores de CVSS por modelo de cámaras AXIS", y = "Recuento", x = "Valor CVSS", size = "Modelo")
+```
+
+Como se puede observar, muchas de las cámaras encontradas a nivel mundial, cuentan con vulnerabilidades cuyo impacto puede no llegar a ser representativo mientras que un total de `r axis.cvss[axis.cvss$Var1 == 10,]$Freq ` cámaras cuentan con vulnerabilidades cuyo valor de CVSS es máximo. De esta manera, si analizamos no sólo cómo están repartidos los diferentes modelos de cámaras AXIS vulnerables junto a la gravedad de estas vulnerabilidades obtenemos los siguientes datos:  
+
+```{r, cvssAxisCamerasWorldWide, warning=FALSE, fig.align='center'}
+ggplot(shodan_cves_join.no_na, aes(country_code, cvss, color = model)) + geom_count() + labs(title = "Recueto cámaras vulnerables a nivel mundial por modelo y gravedad de la vulnerabilidad", y = "Valor CVSS", x = "País", size = "Recuento de cámaras", color = "Modelo")
+```
+
+### Conclusiones  
+
+En primer lugar, como se ha comentado a lo largo del informe, los datos que se han obtenido no han sido suficientes para realizar un estudio detallado y por lo tanto, no nos han permitido contestar a la pregunta hecha inicialmente. Aún así, cabe destacar el gran problema que está suponiendo la falta de aplicación de medidas de seguridad en este tipo de dispositivos. Éstos van desde la creación de botnets hasta problemas de privacidad que irán siendo cada vez más críticos a causa de un aumento masivo del número de instalaciones de cámaras IP.  
+
+Por lo tanto, los usuarios tienen que estar concienciados de los problemas que este tipo de dispositivos pueden generar y de la importancia de la aplicación de medidas de seguridad para poder evitar ataques informáticos o filtraciones de información no deseada.  
+  
+
+### Aspectos a mejorar y trabajos futuros  
+
+A lo largo de la realización de este trabajo han surgido varios problemas e ideas que se podrían tener en cuenta para una futura mejora y ampliación del proyecto:  
+
+1. El aspecto principal a mejorar de este trabajo es el proceso de obtención de los datos ya que éste ha sido la causa principal de que el resultado obtenido no fuese el esperado. Como se ha comentado, el principal inconveniente ha sido el no disponer de información completa de modelo y versión de los diferentes fabricantes de cámaras IP, impidiendo poder determinar las vulnerabilidades de ciertos fabricantes de cámaras. De esta manera, si se encontrase una manera alternativa de obtener la información necesaria, se dispondría de datos suficientes para realizar un estudio detallado de las cámaras mas vulnerables a nivel mundial.  
+
+2. Para la realización de este proyecto se han escogido un total de 6 modelos de cámaras, pero para que el estudio fuese real, se tendría que hacer un análisis de todos los modelos presentes en el mercado o al menos incluyendo todos los fabricantes más populares. Esto se podría llevar a cabo disponiendo de un dataset de CPEs completo ya que como se ha detallado en los apartados anteriores, el que se ha utilizado para este trabajo no estaba completo.
+
+3. Por otro lado, una parte muy interesante a continuar con el estudio sería no sólo ver cuantas vulnerabilidades tienen determinadas marcas sino de qué tipo, pero esta pregunta nos queda limitada a la dificultad que hemos tenido por los medios técnicos utilizados en la búsqueda de datos para el estudio.  
+
+4. Como se había pensado inicialmente, otro estudio podría centrarse en determinar qué cámaras infringen la ley de protección de datos, pero para ello se tendría que buscar una manera de analizar qué tipo de información están captando las diferentes cámaras de videovigilancia presentes en la red.
