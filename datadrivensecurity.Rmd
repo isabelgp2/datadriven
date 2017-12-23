@@ -2,8 +2,8 @@
 title: "Impacto de las vulnerabilidades en cámaras IP"
 author: "Isabel Garcia Padilla, Javier Taberner Nicolas, Roxana Madalina Gogonea"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
